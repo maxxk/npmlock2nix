@@ -334,10 +334,10 @@ rec {
           rm -f node_modules
         fi
       ''}
-      if test -e node_modules; then
-        echo '[npmlock2nix] There is already a `node_modules` directory. Not replacing it.' >&2
-        exit 1
-      fi
+      # if test -e node_modules; then
+      #   echo '[npmlock2nix] There is already a `node_modules` directory. Not replacing it.' >&2
+      #   exit 1
+      # fi
     '' +
     (
       if mode == "copy" then ''
@@ -345,7 +345,22 @@ rec {
         chmod -R u+rw node_modules
       '' else if mode == "symlink" then ''
         ln -s ${node_modules}/node_modules node_modules
-      '' else throw "node_modules_mode must be either `copy` or `symlink`"
+      '' else if mode == "symlink_packages" then ''
+        mkdir -p node_modules
+        for module in ${node_modules}/node_modules/*
+        do
+          if test node_modules/$(basename "$module") -ef $module; then
+            continue
+          fi
+          if test -L node_modules/$(basename "$module"); then
+            rm node_modules/$(basename "$module")
+          fi
+          if test -e node_modules/$(basename "$module"); then
+            continue
+          fi
+          ln -s "$module" node_modules/
+        done
+      '' else throw "node_modules_mode must be either `copy` or `symlink` or `symlink_packages`"
     ) + ''
       export NODE_PATH="$(pwd)/node_modules:$NODE_PATH"
     '';
